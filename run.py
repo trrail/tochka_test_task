@@ -1,25 +1,26 @@
 import json
 from datetime import datetime
+from collections import defaultdict
 
 
 def check_capacity(max_capacity: int, guests: list) -> bool:
+    # Если гостей меньше, чем вместимость отеля, то точно всех разместим
     if max_capacity >= len(guests):
         return True
-    dates = {}
+
+    # Заполняем словарь нулями
+    in_and_out_events = defaultdict(int)
     for guest in guests:
         check_in = datetime.strptime(guest["check-in"], "%Y-%m-%d")
         check_out = datetime.strptime(guest["check-out"], "%Y-%m-%d")
-        if dates.get(check_in) is None:
-            dates[check_in] = 0
-        if dates.get(check_out) is None:
-            dates[check_out] = 0
-        dates[check_in] += 1
-        dates[check_out] -= 1
 
-    counter = 0
-    for date in sorted(dates.keys()):
-        counter += dates[date]
-        if counter > max_capacity:
+        in_and_out_events[check_in] += 1
+        in_and_out_events[check_out] -= 1
+
+    guests_counter = 0
+    for date in sorted(in_and_out_events.keys()):
+        guests_counter += in_and_out_events[date]
+        if guests_counter > max_capacity:
             return False
     return True
 
