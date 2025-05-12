@@ -14,67 +14,68 @@ def get_input():
     return [list(line.strip()) for line in sys.stdin]
 
 
-def min_steps_to_collect_all_keys(grid: List[str]) -> int:
-    rows, cols = len(grid), len(grid[0])
-    grid = [list(row) for row in grid]
+def min_steps_to_collect_all_keys(data: List[str]) -> int:
+    rows = len(data)
+    cols = len(data[0]) if rows > 0 else 0
+    data = [list(row) for row in data]
 
-    # Все ключи и стартовые позиции
-    key_count = 0
-    starts = []
+    # Находим стартовые позиции и все ключи
+    robots_start_positions = []
+    all_keys = set()
 
     for r in range(rows):
         for c in range(cols):
-            if grid[r][c] == '@':
-                starts.append((r, c))
-                grid[r][c] = '.'  # заменяем на проходимое
-            elif 'a' <= grid[r][c] <= 'z':
-                key_count |= 1 << (ord(grid[r][c]) - ord('a'))
+            if data[r][c] == '@':
+                robots_start_positions.append((r, c))
+                data[r][c] = '.'  # Меняем @ на точку, чтобы робот мог пройти через своё начальное состояние
+            elif data[r][c].islower():
+                all_keys.add(data[r][c])
 
-    all_keys = key_count  # Целевая битовая маска всех ключей
+    total_keys = len(all_keys)
+    if total_keys == 0:
+        return 0  # если ключей нет, ответ 0
+
+    # Создал очередь для состояний
     queue = deque()
+    # Закидываем в очередь начальное состояние - позиции роботов, найденные ключи, кол-во шагов
+    queue.append((tuple(robots_start_positions), set(), 0))
 
-    # Изначальное состояние: позиции роботов + маска ключей
+    # Множество посещенных состояний: (позиции_роботов, frozenset_ключей)
     visited = set()
-    queue.append((tuple(starts), 0, 0))  # ((r1, r2, r3, r4), ключи, шаги)
-    visited.add((tuple(starts), 0))
+    visited.add((tuple(robots_start_positions), frozenset()))
 
+    # Направления движения для роботов
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-
     while queue:
-        robots, keys, steps = queue.popleft()
-
+        robots, collected_keys, steps = queue.popleft()
         for i in range(len(robots)):
             x, y = robots[i]
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
-
-                if not (0 <= nx < rows and 0 <= ny < cols):
-                    continue
-                cell = grid[nx][ny]
+                cell = data[nx][ny]
                 if cell == '#':
-                    continue
-                if 'A' <= cell <= 'Z' and not (keys & (1 << (ord(cell.lower()) - ord('a')))):
-                    continue
-
-                new_keys = keys
-                if 'a' <= cell <= 'z':
-                    new_keys |= 1 << (ord(cell) - ord('a'))
-
+                    continue  # Упёрлись в стену
+                if cell.isupper() and cell.lower() not in collected_keys:
+                    continue  # Нашли дверь, но не можем открыть
+                # Проверяем клетку на наличие ключа. Если ключ, то кладём его в мн-во найденных ключей
+                new_keys = set(collected_keys)
+                if cell.islower():
+                    new_keys.add(cell)
+                # Обновляем позиции роботов
                 new_robots = list(robots)
                 new_robots[i] = (nx, ny)
                 new_robots_tuple = tuple(new_robots)
-
-                state = (new_robots_tuple, new_keys)
+                # Сохраняем получившееся состояние
+                state = (new_robots_tuple, frozenset(new_keys))
                 if state in visited:
                     continue
                 visited.add(state)
-
-                if new_keys == all_keys:
+                # Если собрали все ключи, возвращаем ответ
+                if len(new_keys) == total_keys:
                     return steps + 1
 
                 queue.append((new_robots_tuple, new_keys, steps + 1))
-
-    return -1
+    return 0
 
 def main():
     data = get_input()
